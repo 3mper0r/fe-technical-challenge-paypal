@@ -1,7 +1,8 @@
-import React from 'react'
-import ReactDOM from 'react-dom'
-import { connect, FormikContextType } from 'formik'
-import type PayPal from '@paypal/paypal-js'
+import React from 'react';
+import  ReactDOM from 'react-dom';
+import type PayPal from '@paypal/paypal-js';
+import { ErrorMessage, useFormik } from 'formik';
+
 const buttonStyle = {
   color: 'gold',
   fundingicons: false,
@@ -9,59 +10,94 @@ const buttonStyle = {
   shape: 'rect',
   size: 'responsive',
   tagline: false,
-} as PayPal.PayPalButtonsComponentOptions['style']
+} as PayPal.PayPalButtonsComponentOptions['style'];
+
 type PayPalButtonComponent = React.ComponentType<
   PayPal.PayPalButtonsComponentOptions & { commit: boolean; env: string }
 >
-type PayPalButtonProps = { formik: FormikContextType<PayPalFormValues> }
 
-class PayPalButton extends React.Component<PayPalButtonProps> {
-  createOrderOrBillingAgreement = async () => {
-    this.props.formik.submitForm() // submit will call api with form values and inject _paypal_token into the form values
-    await this.sleepUntilSubmitted()
-    if (this.props.formik.isValid) this.props.formik.setSubmitting(true)
-    return this.props.formik.values._paypal_token!
-  }
+const ENV = 'sandbox'
 
-  sleepUntilSubmitted = async () => {
-    const sleep = async (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-    while (this.props.formik.isSubmitting) {
-      await sleep(100)
-    }
-  }
-
-  onApprove = async () => {
-    // do something on success
-  }
-
-  render = () => {
-    const paypal = window['paypal']
-    if (!paypal) return null
-
-    const Button = (paypal.Buttons! as any).driver('react', {
-      React,
-      ReactDOM,
-    }) as PayPalButtonComponent
-    const { isSubmitting } = this.props.formik
-
-    return (
-      <div>
-        <div style={(isSubmitting && { display: 'none' }) || {}}>
-          <Button
-            commit
-            env="sandbox"
-            createBillingAgreement={this.createOrderOrBillingAgreement}
-            onApprove={this.onApprove}
-            onCancel={() => this.props.formik.setSubmitting(false)}
-            onError={() => this.props.formik.setSubmitting(false)}
-            style={buttonStyle}
-          />
-        </div>
-      </div>
-    )
+declare global {
+  interface PayPalWindow {
+    Buttons: any;
+    paypal?: 'paypal'
   }
 }
 
-export type PayPalFormValues = { _paypal_token?: string }
+const PayPalButton = () => {
+  const formik = useFormik({
+    initialValues: {_paypal_token: '', isSubmitting: false},
+    onSubmit: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      formik.setValues({ _paypal_token: 'fake_paypal_token', isSubmitting: true });
+      formik.setSubmitting(false);
+    },
+  });
 
-export default connect<{}, PayPalFormValues>(PayPalButton)
+  const createOrderOrBillingAgreement = async () => {
+    await formik.submitForm();
+    await sleepUntilSubmitted();
+    if (formik.isValid) {
+      formik.setSubmitting(true)
+    };
+    return formik.values._paypal_token!;
+  };
+
+  const sleepUntilSubmitted = async () => {
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    
+    const waitingForSubmission = () => {
+      return new Promise<void>((resolve) => {
+        const submission = async () => {
+          try{
+            if (!formik.isSubmitting) {
+              resolve()
+            } else {
+              await sleep(100)
+          }
+        } catch(err) {
+          console.log(err); 
+          }
+        }
+        submission()
+    })
+  }
+  await Promise.all([sleep(100), waitingForSubmission()])
+  }
+
+  const onApprove = async () => {
+    console.log('approved');    
+  };
+
+  const paypal = window.paypal as PayPalWindow;
+  if (!paypal) return null;
+
+  const Button = (paypal.Buttons as any).driver('react', {
+    React,
+    ReactDOM,
+  }) as PayPalButtonComponent
+  
+  return (
+    <div>
+      <div className={`${formik.isSubmitting ? 'disabled' : ''}`}>
+        <Button 
+          commit
+          env={ENV}        
+          createBillingAgreement={createOrderOrBillingAgreement}
+          onApprove={onApprove}
+          onCancel={() => formik.setSubmitting(false)}
+          onError={() => {
+            console.log(formik.errors)
+            formik.setSubmitting(false)
+          }}
+          style={buttonStyle}
+        />
+        <ErrorMessage name='_paypal_token' component="button"/>
+        {formik.errors._paypal_token && <div>{formik.errors._paypal_token}</div> }
+      </div>
+    </div>
+  );
+};
+
+export default PayPalButton;

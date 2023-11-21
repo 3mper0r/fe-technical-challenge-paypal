@@ -1,21 +1,25 @@
-import PayPalButton, { PayPalFormValues } from './PayPalButton'
-import { Formik, FormikConfig } from 'formik'
-import './App.css'
-const submitHandler: FormikConfig<PayPalFormValues>['onSubmit'] = (_, formik) => {
-  setTimeout(() => {
-    formik.setValues({ _paypal_token: 'fake_paypal_token' })
-    formik.setSubmitting(false)
-  }, 3000)
-}
+import { FormikProvider, useFormik } from 'formik';
+import PayPalButton from './PayPalButton';
+import './App.css';
 
-function App() {
+const App = () => {
+  const formik = useFormik({
+    initialValues: {},
+    onSubmit: () => {
+      setTimeout(() => {
+        formik.setValues({ _paypal_token: 'fake_paypal_token' })
+        formik.setSubmitting(false)
+      }, 3000)
+    },
+  });
+
   return (
     <>
-      <Formik<PayPalFormValues> onSubmit={submitHandler} initialValues={{}}>
+      <FormikProvider value={formik}>
         <PayPalButton />
-      </Formik>
+      </FormikProvider>
     </>
-  )
-}
+  );
+};
 
-export default App
+export default App;
