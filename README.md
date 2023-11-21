@@ -20,7 +20,9 @@ Take a look at the component `PayPalButton`, located in `/src/PayPalButton.tsx`.
 3. Bonus: Get rid of the HOC connect component (perhaps by utilising other available APIs).
 4. Bonus: There is an issue with running the current implementation in `React.StrictMode` - the PayPal button will be duplicated, how would you go about solving this problem?
 
-    *Answer*: ...
+    *Answer*: 
+    - I would go straight to the react devtools and look at the component tree and see which component is causing. Normally this happens from side effects that might be running multiple times, when state changes and causes the component to rerender or when we have conditional rendering based on a condition. In functional programming we use useEffect hook to render things on page and this hook takes a dependency array and when those dependencies changes, they rerender the page. Also, third-party libraries such as Formik when used not properly can cause the duplication of button.
+
 
 ### Additional notes
 

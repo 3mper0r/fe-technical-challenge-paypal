@@ -6,10 +6,7 @@ const App = () => {
   const formik = useFormik({
     initialValues: {},
     onSubmit: () => {
-      setTimeout(() => {
-        formik.setValues({ _paypal_token: 'fake_paypal_token' })
-        formik.setSubmitting(false)
-      }, 3000)
+      console.log('submitted');
     },
   });
 
